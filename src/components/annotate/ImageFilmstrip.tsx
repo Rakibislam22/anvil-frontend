@@ -1,0 +1,36 @@
+/* eslint-disable @next/next/no-img-element */
+"use client";
+import type { AnnotatedImage } from "@/types";
+export default function ImageFilmstrip({
+  images,
+  selected,
+  onSelect,
+}: {
+  images: AnnotatedImage[];
+  selected: string | undefined;
+  onSelect: (image: AnnotatedImage) => void;
+}) {
+  if (!images.length)
+    return (
+      <p className="rounded-lg border border-dashed border-ink/30 p-5 text-sm">
+        No images yet. Upload an image to start marking it up.
+      </p>
+    );
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-2">
+      {images.map((image) => (
+        <button
+          key={image.id}
+          onClick={() => onSelect(image)}
+          className={`shrink-0 rounded-lg border-2 p-1 ${selected === image.id ? "border-ember" : "border-transparent"}`}
+        >
+          <img
+            className="h-20 w-28 rounded object-cover"
+            src={image.image}
+            alt="Uploaded annotation"
+          />
+        </button>
+      ))}
+    </div>
+  );
+}

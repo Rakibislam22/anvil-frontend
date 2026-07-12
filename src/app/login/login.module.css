@@ -1,0 +1,22 @@
+.panel {
+  background:
+    radial-gradient(
+      circle at 30% 70%,
+      rgba(196, 73, 31, 0.35),
+      transparent 38%
+    ),
+    #1c1812;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    animation: glow 2s ease-out both;
+  }
+}
+@keyframes glow {
+  from {
+    filter: brightness(0.8);
+  }
+  to {
+    filter: brightness(1);
+  }
+}
