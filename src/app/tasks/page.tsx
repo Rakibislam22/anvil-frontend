@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import Board from "@/components/tasks/Board";
 import DateSelector from "@/components/tasks/DateSelector";
-import { createTask, listTasks, updateTask } from "@/lib/apiClient";
+import RequireAuth from "@/components/auth/RequireAuth";
+import { createTask, deleteTask, listTasks, updateTask } from "@/lib/apiClient";
 import { useAnvilContext } from "@/context/useAnvilContext";
 import type { Task, TaskStatus } from "@/types";
 export default function TasksPage() {
@@ -28,46 +29,56 @@ export default function TasksPage() {
     (task) => task.due_date.slice(0, 10) === state.selectedDate,
   );
   async function save(task: Partial<Task>) {
-    // The backend expects a simple "YYYY-MM-DD" string for the date.
-    const formattedDate = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : undefined;
     const payload = {
       title: task.title,
-      description: task.description ?? "", // Ensure description is not undefined
+      description: task.description ?? "",
       status: task.status ?? "To Do",
       priority: task.priority ?? "Medium",
-      due_date: formattedDate,
+      due_date: task.due_date,
+      tags: task.tags ?? "",
     };
     try {
-      const saved = typeof task.id === "number" // Use explicit check for number
-        ? await updateTask(task.id, payload) // Use explicit check for number
-        : await createTask(payload);
+      const saved =
+        typeof task.id === "number"
+          ? await updateTask(task.id, payload)
+          : await createTask(payload);
       setTasks((current) =>
         task.id
           ? current.map((item) => (item.id === saved.id ? saved : item))
           : [...current, saved],
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save task.");
+      const message = e instanceof Error ? e.message : "Could not save task.";
+      setError(message);
+      throw new Error(message);
     }
   }
-  async function move(id: string, status: TaskStatus) {
-    const old = allTasks;
+  async function move(id: number, status: TaskStatus) {
+    const previous = allTasks;
     setTasks((current) =>
-      current.map((t) => (t.id === Number(id) ? { ...t, status } : t)),
+      current.map((task) => (task.id === id ? { ...task, status } : task)),
     );
     try {
-      await updateTask(Number(id), { status });
+      await updateTask(id, { status });
     } catch (e) {
-      setTasks(old);
-      setError(
-        e instanceof Error ? e.message : "Task status could not update.",
-      );
+      setTasks(previous);
+      const message =
+        e instanceof Error ? e.message : "Task status could not update.";
+      setError(message);
+    }
+  }
+  async function remove(id: number) {
+    try {
+      await deleteTask(id);
+      setTasks((current) => current.filter((task) => task.id !== id));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Task could not delete.";
+      setError(message);
+      throw new Error(message);
     }
   }
   return (
-    // Render a loading state until the context has rehydrated from localStorage
-    state.isHydrating ? <div className="page-shell"><p className="eyebrow">Loading...</p></div> :
-
+    <RequireAuth>
       <div className="page-shell">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -81,7 +92,8 @@ export default function TasksPage() {
             {error}
           </p>
         )}
-        <Board tasks={tasks} onSave={save} onMove={move} />
+        <Board tasks={tasks} onSave={save} onMove={move} onDelete={remove} />
       </div>
+    </RequireAuth>
   );
 }
