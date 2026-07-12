@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import AnnotationCanvas from "@/components/annotate/AnnotationCanvas";
+import RequireAuth from "@/components/auth/RequireAuth";
 import ImageFilmstrip from "@/components/annotate/ImageFilmstrip";
 import UploadButton from "@/components/annotate/UploadButton";
 import {
@@ -57,36 +58,38 @@ export default function AnnotatePage() {
   }
 
   return (
-    <div className="page-shell">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow">Visual feedback</p>
-          <h1 className="page-title">Annotation tool</h1>
+    <RequireAuth>
+      <div className="page-shell">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Visual feedback</p>
+            <h1 className="page-title">Annotation tool</h1>
+          </div>
+          <UploadButton onUpload={upload} />
         </div>
-        <UploadButton onUpload={upload} />
-      </div>
-      {error && <p className="error">{error}</p>}
-      {loading && <p className="eyebrow">Loading...</p>}
-      <ImageFilmstrip
-        images={images}
-        selected={selected?.id}
-        onSelect={(image) => setSelectedId(image.id)}
-      />
-      {selected ? (
-        <AnnotationCanvas
-          image={selected}
-          onSave={(shape) => patch([...selected.shapes, shape])}
-          onDelete={(index) =>
-            patch(
-              selected.shapes.filter((_, shapeIndex) => shapeIndex !== index),
-            )
-          }
+        {error && <p className="error">{error}</p>}
+        {loading && <p className="eyebrow">Loading...</p>}
+        <ImageFilmstrip
+          images={images}
+          selected={selected?.id}
+          onSelect={(image) => setSelectedId(image.id)}
         />
-      ) : (
-        <div className="rounded-lg bg-ink/5 p-10 text-center">
-          Choose an image to inspect its annotations.
-        </div>
-      )}
-    </div>
+        {selected ? (
+          <AnnotationCanvas
+            image={selected}
+            onSave={(shape) => patch([...selected.shapes, shape])}
+            onDelete={(index) =>
+              patch(
+                selected.shapes.filter((_, shapeIndex) => shapeIndex !== index),
+              )
+            }
+          />
+        ) : (
+          <div className="rounded-lg bg-ink/5 p-10 text-center">
+            Choose an image to inspect its annotations.
+          </div>
+        )}
+      </div>
+    </RequireAuth>
   );
 }
