@@ -1,199 +1,172 @@
+import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import { getAccessToken, getRefreshToken, setTokens } from "@/lib/authToken";
-import type {
-  Annotation,
-  AuthResponse,
-  Shape,
-  Task,
-  User,
-} from "@/types";
+import type { Annotation, AuthResponse, Shape, Task, User } from "@/types";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api"; // Default to localhost if not set
-
-let isRefreshing = false;
+type RetriableConfig = AxiosRequestConfig & { _retried?: boolean };
+type ErrorData = Record<string, string[] | string> | null;
 
 export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data: Record<string, string[] | string> | null = null,
+    public data: ErrorData = null,
   ) {
     super(message);
   }
 }
 
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {},
-  retry = true,
-): Promise<T> {
+const api = axios.create({ baseURL: process.env.NEXT_PUBLIC_API_BASE_URL });
+
+api.interceptors.request.use((config) => {
   const access = getAccessToken();
-  const refresh = getRefreshToken();
+  if (access) config.headers.Authorization = `Bearer ${access}`;
+  return config;
+});
 
-  const headers = new Headers(options.headers || {});
-  if (access) {
-    headers.set("Authorization", `Bearer ${access}`);
+function toApiError(error: unknown): ApiError {
+  if (error instanceof ApiError) return error;
+  if (axios.isAxiosError(error)) {
+    const data = (error.response?.data ?? null) as ErrorData;
+    const detail = data?.detail;
+    return new ApiError(
+      typeof detail === "string" ? detail : error.message,
+      error.response?.status ?? 0,
+      data,
+    );
   }
-  if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  console.log("Sending request with headers:", headers);
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (response.status === 401 && retry && refresh) {
-    if (!isRefreshing) {
-      isRefreshing = true;
-      try {
-        const { access: newAccess } = await refreshToken(refresh);
-        setTokens(newAccess, refresh); // Update the in-memory token
-        isRefreshing = false;
-        return await request<T>(endpoint, options, false); // Retry original request
-      } catch (e) {
-        isRefreshing = false;
-        setTokens(null, null); // Clear tokens on refresh failure
-        window.location.href = "/login"; // Force redirect
-        throw new ApiError(
-          "Your session has ended. Please sign in again.",
-          401,
-        );
-      }
-    } else {
-      // Wait for the token refresh to complete
-      await new Promise<void>((resolve) => {
-        const interval = setInterval(() => {
-          if (!isRefreshing) {
-            clearInterval(interval);
-            resolve();
-          }
-        }, 100);
-      });
-      return await request<T>(endpoint, options, false);
-    }
-  }
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    const message =
-      errorBody?.detail || `Request failed with status ${response.status}`;
-    throw new ApiError(message, response.status, errorBody);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
+  return new ApiError("Request failed.", 0);
 }
 
-// --- Auth ---
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const original = error.config as RetriableConfig | undefined;
+    const refresh = getRefreshToken();
+    const isRefreshRequest = original?.url?.includes("/auth/login/refresh/");
+
+    if (
+      error.response?.status === 401 &&
+      original &&
+      !original._retried &&
+      refresh &&
+      !isRefreshRequest
+    ) {
+      original._retried = true;
+      try {
+        const { access } = await refreshToken(refresh);
+        setTokens(access, refresh);
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${access}`;
+        return api.request(original);
+      } catch (refreshError) {
+        setTokens(null, null);
+        localStorage.removeItem("anvil-access");
+        localStorage.removeItem("anvil-refresh");
+        localStorage.removeItem("anvil-user");
+        window.location.assign("/login");
+        return Promise.reject(toApiError(refreshError));
+      }
+    }
+
+    return Promise.reject(toApiError(error));
+  },
+);
+
+async function send<T>(config: AxiosRequestConfig): Promise<T> {
+  try {
+    const response = await api.request<T>(config);
+    return response.data;
+  } catch (error) {
+    throw toApiError(error);
+  }
+}
+
 export function register(fields: {
-  username: string;
-  first_name: string;
-  last_name: string;
   email: string;
   password: string;
   password2: string;
 }) {
-  return request<{ message: string }>("/auth/register/", {
+  return send<{ message: string }>({
     method: "POST",
-    body: JSON.stringify(fields),
+    url: "/auth/register/",
+    data: fields,
   });
 }
 
-export function login(fields: { username: string; password: string }) {
-  return request<AuthResponse>("/auth/login/", {
+export function login(fields: { email: string; password: string }) {
+  return send<AuthResponse>({
     method: "POST",
-    body: JSON.stringify(fields),
+    url: "/auth/login/",
+    data: fields,
   });
 }
 
 export function refreshToken(refresh: string) {
-  return request<{ access: string }>("/auth/login/refresh/", {
+  return send<{ access: string }>({
     method: "POST",
-    body: JSON.stringify({ refresh }),
+    url: "/auth/login/refresh/",
+    data: { refresh },
   });
 }
 
 export function getProfile() {
-  return request<User>("/auth/profile/");
+  return send<User>({ url: "/auth/profile/" });
 }
-
-// --- Tasks ---
 export function listTasks() {
-  return request<Task[]>("/tasks/");
+  return send<Task[]>({ url: "/tasks/" });
 }
-
-export function createTask(fields: {
-  title?: string;
-  description?: string;
-  status?: Task["status"];
-  priority?: Task["priority"];
-  due_date?: string;
-}) {
-  console.log("createTask payload:", JSON.stringify(fields));
-  return request<Task>("/tasks/", {
-    method: "POST",
-    body: JSON.stringify(fields),
-  });
+export function createTask(
+  fields: Partial<
+    Pick<
+      Task,
+      "title" | "description" | "status" | "priority" | "due_date" | "tags"
+    >
+  >,
+) {
+  return send<Task>({ method: "POST", url: "/tasks/", data: fields });
 }
-
 export function getTask(id: number) {
-  return request<Task>(`/tasks/${id}/`);
+  return send<Task>({ url: `/tasks/${id}/` });
 }
-
 export function updateTask(
   id: number,
-  fields: Partial<{
-    title: string;
-    description: string;
-    status: Task["status"];
-    priority: Task["priority"];
-    due_date: string;
-  }>,
+  fields: Partial<
+    Pick<
+      Task,
+      "title" | "description" | "status" | "priority" | "due_date" | "tags"
+    >
+  >,
 ) {
-  return request<Task>(`/tasks/${id}/`, {
-    method: "PATCH",
-    body: JSON.stringify(fields),
-  });
+  return send<Task>({ method: "PATCH", url: `/tasks/${id}/`, data: fields });
 }
-
 export function deleteTask(id: number) {
-  return request<void>(`/tasks/${id}/`, { method: "DELETE" });
+  return send<void>({ method: "DELETE", url: `/tasks/${id}/` });
 }
-
-// --- Annotations ---
-export function listAnnotations() {
-  return request<Annotation[]>("/annotations/");
-}
-
-export function createAnnotation(image: File, shapes: Shape[]) {
-  const formData = new FormData();
-  formData.append("image", image);
-  formData.append("shapes", JSON.stringify(shapes));
-  return request<Annotation>("/annotations/", {
-    method: "POST",
-    body: formData,
+export async function listAnnotations() {
+  const data = await send<Annotation[] | { results: Annotation[] }>({
+    url: "/annotations/",
   });
+  return Array.isArray(data) ? data : (data.results ?? []);
 }
-
+export function createAnnotation(image: File, shapes: Shape[]) {
+  const form = new FormData();
+  form.append("image", image);
+  form.append("shapes", JSON.stringify(shapes));
+  return send<Annotation>({ method: "POST", url: "/annotations/", data: form });
+}
 export function getAnnotation(id: number) {
-  return request<Annotation>(`/annotations/${id}/`);
+  return send<Annotation>({ url: `/annotations/${id}/` });
 }
-
 export function updateAnnotation(
   id: number,
-  fields: Partial<{ shapes: Shape[] }>,
+  fields: Partial<Pick<Annotation, "shapes">>,
 ) {
-  return request<Annotation>(`/annotations/${id}/`, {
+  return send<Annotation>({
     method: "PATCH",
-    body: JSON.stringify(fields),
+    url: `/annotations/${id}/`,
+    data: fields,
   });
 }
-
 export function deleteAnnotation(id: number) {
-  return request<void>(`/annotations/${id}/`, { method: "DELETE" });
+  return send<void>({ method: "DELETE", url: `/annotations/${id}/` });
 }
