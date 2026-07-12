@@ -1,26 +1,105 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-charcoal: #1c1812;
+  --color-pale-steel: #e7e4dc;
+  --color-ember: #c4491f;
+  --color-steel: #4f7396;
+  --color-ink: #211d17;
+  --color-parchment: #f1ece1;
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: #e7e4dc;
+  color: #211d17;
+  font-family: var(--font-body), sans-serif;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+input,
+select {
+  display: block;
+  width: 100%;
+  margin-top: 0.4rem;
+  border: 1px solid rgb(33 29 23 / 0.28);
+  border-radius: 0.5rem;
+  background: #f1ece1;
+  padding: 0.7rem 0.8rem;
+  color: #211d17;
+  outline: none;
+}
+input:focus,
+select:focus {
+  border-color: #c4491f;
+  box-shadow: 0 0 0 3px rgb(196 73 31 / 0.18);
+}
+.page-shell {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.page-title {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+.eyebrow {
+  margin: 0;
+  color: #4f7396;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.button-primary,
+.button-secondary {
+  border-radius: 0.5rem;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  transition: transform 0.16s ease;
+}
+.button-primary {
+  border: 1px solid #c4491f;
+  background: #c4491f;
+  color: #f1ece1;
+}
+.button-secondary {
+  border: 1px solid #4f7396;
+  background: transparent;
+  color: #4f7396;
+}
+.button-primary:hover,
+.button-secondary:hover {
+  transform: translateY(-1px);
+}
+.error {
+  border: 1px solid #c4491f;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  color: #c4491f;
+  font-size: 0.875rem;
+}
+@media (max-width: 640px) {
+  .page-shell {
+    padding: 1.25rem 1rem;
+  }
 }
