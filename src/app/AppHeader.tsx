@@ -1,40 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ForgeMark from "@/components/auth/ForgeMark";
 import { useAnvilContext } from "@/context/useAnvilContext";
-import { getProfile } from "@/lib/apiClient";
 
 export default function AppHeader() {
   const path = usePathname();
   const router = useRouter();
   const { state, dispatch } = useAnvilContext();
-  const { user, auth } = state;
-
-  useEffect(() => {
-    if (auth.access && !user) {
-      getProfile()
-        .then((profile) => {
-          dispatch({ type: "SET_USER", user: profile });
-        })
-        .catch(() => {
-          // If getProfile fails, tokens might be stale.
-          // The API client's 401 handler will manage this.
-        });
-    }
-  }, [auth.access, user, dispatch]);
-
+  if (path === "/login" || path === "/register") return null;
   function handleSignOut() {
     dispatch({ type: "CLEAR_AUTH" });
+    localStorage.removeItem("anvil-access");
+    localStorage.removeItem("anvil-refresh");
+    localStorage.removeItem("anvil-user");
     router.replace("/login");
   }
-
-  if (path === "/login" || path === "/register") {
-    return null;
-  }
-
   return (
     <header className="border-b border-ink/15 bg-pale-steel">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
@@ -58,7 +40,7 @@ export default function AppHeader() {
             </Link>
           </nav>
           <div className="flex items-center gap-3">
-            <span className="text-sm">{user?.first_name}</span>
+            <span className="text-sm">{state.auth.user?.email}</span>
             <button onClick={handleSignOut}>Sign out</button>
           </div>
         </div>

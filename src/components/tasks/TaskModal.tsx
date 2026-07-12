@@ -1,30 +1,62 @@
 "use client";
+
 import { FormEvent, useState } from "react";
 import type { Priority, Task, TaskStatus } from "@/types";
+
 export default function TaskModal({
   task,
   date,
   onClose,
   onSave,
+  onDelete,
 }: {
   task?: Task;
   date: string;
   onClose: () => void;
   onSave: (task: Partial<Task>) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
 }) {
   const [form, setForm] = useState<Partial<Task>>(
     task ?? {
       title: "",
       description: "",
       priority: "Medium",
-      due_date: `${date}T00:00:00Z`,
+      due_date: date,
       status: "To Do",
+      tags: "",
     },
   );
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    await onSave(form);
-    onClose();
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(form);
+      onClose();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Task could not save.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function remove() {
+    if (!task) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onDelete(task.id);
+      onClose();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Task could not delete.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <div className="fixed inset-0 z-30 grid place-items-center bg-charcoal/70 p-4">
@@ -46,15 +78,17 @@ export default function TaskModal({
             <input
               required
               value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              onChange={(event) =>
+                setForm({ ...form, title: event.target.value })
+              }
             />
           </label>
           <label>
             Description
             <textarea
               value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
+              onChange={(event) =>
+                setForm({ ...form, description: event.target.value })
               }
               className="mt-1 w-full rounded-lg border border-ink/30 bg-parchment p-3"
             />
@@ -63,8 +97,8 @@ export default function TaskModal({
             Priority
             <select
               value={form.priority}
-              onChange={(e) =>
-                setForm({ ...form, priority: e.target.value as Priority })
+              onChange={(event) =>
+                setForm({ ...form, priority: event.target.value as Priority })
               }
             >
               <option>Low</option>
@@ -75,22 +109,29 @@ export default function TaskModal({
           <label>
             Due date
             <input
-              type="datetime-local"
-              value={form.due_date?.slice(0, 16)}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  due_date: new Date(e.target.value).toISOString(),
-                })
+              type="date"
+              value={form.due_date?.slice(0, 10)}
+              onChange={(event) =>
+                setForm({ ...form, due_date: event.target.value })
               }
+            />
+          </label>
+          <label>
+            Tags
+            <input
+              value={form.tags ?? ""}
+              onChange={(event) =>
+                setForm({ ...form, tags: event.target.value })
+              }
+              placeholder="design, urgent"
             />
           </label>
           <label>
             Status
             <select
               value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value as TaskStatus })
+              onChange={(event) =>
+                setForm({ ...form, status: event.target.value as TaskStatus })
               }
             >
               <option>To Do</option>
@@ -99,7 +140,26 @@ export default function TaskModal({
             </select>
           </label>
         </div>
-        <button className="button-primary mt-6 w-full">Save task</button>
+        {error && (
+          <p role="alert" className="error mt-4">
+            {error}
+          </p>
+        )}
+        <div className="mt-6 flex gap-3">
+          <button className="button-primary flex-1" disabled={saving}>
+            {saving ? "Saving…" : "Save task"}
+          </button>
+          {task && (
+            <button
+              type="button"
+              className="button-secondary"
+              disabled={saving}
+              onClick={remove}
+            >
+              Delete task
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );
