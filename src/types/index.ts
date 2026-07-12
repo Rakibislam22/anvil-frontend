@@ -1,6 +1,5 @@
 export type User = {
   id: number;
-  username: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -12,24 +11,24 @@ export type AuthResponse = {
   user: User;
 };
 
+export type TaskStatus = "To Do" | "In Progress" | "Done";
+export type Priority = "Low" | "Medium" | "High";
+
 export type Task = {
   id: number;
   title: string;
   description: string;
-  status: "To Do" | "In Progress" | "Done";
-  priority: "Low" | "Medium" | "High";
-  due_date: string; // "YYYY-MM-DD"
+  status: TaskStatus;
+  priority: Priority;
+  due_date: string;
+  tags: string;
   owner: number;
 };
 
-export type Shape = {
-  type: "polygon";
-  points: [number, number][];
-};
-
+export type Shape = { type: "polygon"; points: [number, number][] };
 export type Annotation = {
   id: number;
-  image: string; // URL
+  image: string;
   shapes: Shape[];
   owner: number;
 };
