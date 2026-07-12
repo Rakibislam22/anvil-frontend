@@ -1,29 +1,51 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/apiClient";
 import { useAnvilContext } from "@/context/useAnvilContext";
 
+const emailPattern = /^\S+@\S+\.\S+$/;
+
 export default function LoginForm() {
   const router = useRouter();
   const { dispatch } = useAnvilContext();
-  const [username, setUsername] = useState("");
+  const { state } = useAnvilContext();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!state.isHydrating && state.auth.accessToken) {
+      router.replace("/tasks");
+    }
+  }, [state.isHydrating, state.auth.accessToken, router]);
+
+  if (state.isHydrating || state.auth.accessToken) {
+    return (
+      <div className="page-shell">
+        <p className="eyebrow">Loading...</p>
+      </div>
+    );
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!username.trim() || !password) {
-      setError("Username and password are required.");
+    if (!emailPattern.test(email)) {
+      setError("Enter a valid email address.");
       return;
     }
+    if (!password) {
+      setError("Password is required.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
-      const authResponse = await login({ username, password });
+      const authResponse = await login({ email, password });
       dispatch({ type: "SET_AUTH", auth: authResponse });
       router.replace("/tasks");
     } catch (reason) {
@@ -36,12 +58,14 @@ export default function LoginForm() {
   return (
     <form onSubmit={submit} className="w-full max-w-md space-y-5">
       <div>
-        <label htmlFor="username">Username</label>
+        <label htmlFor="email">Email</label>
         <input
-          id="username"
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          autoComplete="username"
+          id="email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          autoComplete="email"
+          aria-invalid={Boolean(error)}
         />
       </div>
       <div>
