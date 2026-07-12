@@ -7,19 +7,23 @@ export default function Column({
   tasks,
   onMove,
   onEdit,
-  onDragStart,
 }: {
   name: string;
   status: TaskStatus;
   tasks: Task[];
-  onMove: (id: string, status: TaskStatus) => void;
+  onMove: (id: number, status: TaskStatus) => void;
   onEdit: (t: Task) => void;
-  onDragStart: (id: string) => void;
 }) {
   return (
     <section
       onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => onMove(e.dataTransfer.getData("text/plain"), status)}
+      onDrop={(e) => {
+        e.preventDefault();
+        const id = Number(e.dataTransfer.getData("text/plain"));
+        if (!Number.isNaN(id)) {
+          onMove(id, status);
+        }
+      }}
       className="min-h-72 rounded-lg bg-ink/5 p-3"
     >
       <div className="mb-3 flex items-center justify-between">
@@ -28,14 +32,7 @@ export default function Column({
       </div>
       <div className="space-y-3">
         {tasks.length ? (
-          tasks.map((t) => (
-            <TaskCard
-              key={t.id}
-              task={t}
-              onEdit={onEdit}
-              onDragStart={onDragStart}
-            />
-          ))
+          tasks.map((t) => <TaskCard key={t.id} task={t} onEdit={onEdit} />)
         ) : (
           <p className="rounded-lg border border-dashed border-ink/20 p-4 text-sm">
             No tasks here yet.
