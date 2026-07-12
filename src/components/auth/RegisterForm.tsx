@@ -1,37 +1,28 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, register } from "@/lib/apiClient";
+import { useAnvilContext } from "@/context/useAnvilContext";
 
-type Fields = {
-  username: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-  password2: string;
-};
+type Fields = { email: string; password: string; password2: string };
 type Errors = Partial<Record<keyof Fields | "general", string>>;
-
-const initial: Fields = {
-  username: "",
-  first_name: "",
-  last_name: "",
-  email: "",
-  password: "",
-  password2: "",
-};
+const emailPattern = /^\S+@\S+\.\S+$/;
 
 export default function RegisterForm() {
   const router = useRouter();
-  const [fields, setFields] = useState<Fields>(initial);
+  const { state } = useAnvilContext();
+  const [fields, setFields] = useState<Fields>({
+    email: "",
+    password: "",
+    password2: "",
+  });
   const [errors, setErrors] = useState<Errors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  function set(name: keyof Fields, value: string) {
+  function update(name: keyof Fields, value: string) {
     setFields((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({
       ...current,
@@ -39,29 +30,21 @@ export default function RegisterForm() {
       general: undefined,
     }));
   }
-
   function validate() {
     const next: Errors = {};
-    (Object.keys(fields) as (keyof Fields)[]).forEach((name) => {
-      if (!fields[name].trim()) {
-        next[name] = "This field is required.";
-      }
-    });
-    if (fields.email && !/^\S+@\S+\.\S+$/.test(fields.email)) {
+    if (!fields.email) next.email = "Email is required.";
+    else if (!emailPattern.test(fields.email))
       next.email = "Enter a valid email address.";
-    }
-    if (fields.password2 && fields.password !== fields.password2) {
+    if (!fields.password) next.password = "Password is required.";
+    if (!fields.password2) next.password2 = "Confirm your password.";
+    else if (fields.password !== fields.password2)
       next.password2 = "Passwords do not match.";
-    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
-
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!validate()) {
-      return;
-    }
+    if (!validate()) return;
     setLoading(true);
     try {
       await register(fields);
@@ -70,30 +53,27 @@ export default function RegisterForm() {
       if (reason instanceof ApiError && reason.data) {
         const backend: Errors = {};
         Object.entries(reason.data).forEach(([key, value]) => {
-          if (key in fields) {
+          if (key in fields)
             backend[key as keyof Fields] = Array.isArray(value)
               ? value.join(" ")
               : value;
-          } else if (key === "detail") {
+          else if (key === "detail")
             backend.general = Array.isArray(value) ? value.join(" ") : value;
-          }
         });
         setErrors(
           Object.keys(backend).length ? backend : { general: reason.message },
         );
-      } else {
+      } else
         setErrors({
           general:
             reason instanceof Error
               ? reason.message
               : "Account could not be created.",
         });
-      }
     } finally {
       setLoading(false);
     }
   }
-
   const input = (
     name: keyof Fields,
     label: string,
@@ -108,8 +88,8 @@ export default function RegisterForm() {
           id={name}
           type={show ? "text" : type}
           value={fields[name]}
-          onChange={(event) => set(name, event.target.value)}
-          autoComplete={name === "password2" ? "new-password" : name}
+          onChange={(event) => update(name, event.target.value)}
+          autoComplete={name === "email" ? "email" : "new-password"}
           aria-invalid={Boolean(errors[name])}
           aria-describedby={errors[name] ? `${name}-error` : undefined}
         />
@@ -131,11 +111,22 @@ export default function RegisterForm() {
     </div>
   );
 
+  useEffect(() => {
+    if (!state.isHydrating && state.auth.accessToken) {
+      router.replace("/tasks");
+    }
+  }, [state.isHydrating, state.auth.accessToken, router]);
+
+  if (state.isHydrating || state.auth.accessToken) {
+    return (
+      <div className="page-shell">
+        <p className="eyebrow">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={submit} className="w-full max-w-md space-y-4">
-      {input("username", "Username")}
-      {input("first_name", "First name")}
-      {input("last_name", "Last name")}
       {input("email", "Email", "email")}
       {input("password", "Password", "password", showPassword, () =>
         setShowPassword((value) => !value),
