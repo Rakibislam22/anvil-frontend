@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import AnnotationCanvas, { AnnotationCanvasRef } from "@/components/annotate/AnnotationCanvas";
+import AnnotationCanvas, {
+  AnnotationCanvasRef,
+} from "@/components/annotate/AnnotationCanvas";
 import RequireAuth from "@/components/auth/RequireAuth";
 import ClassSelector, {
   ANNOTATION_CLASSES,
@@ -41,7 +43,7 @@ export default function AnnotatePage() {
   const [selectedClass, setSelectedClass] = useState(ANNOTATION_CLASSES[0]);
   const [editMode, setEditMode] = useState(false);
   const [annotationsVisible, setAnnotationsVisible] = useState(true);
-  const saveTimeout = useRef<NodeJS.Timeout>();
+  const saveTimeout = useRef<NodeJS.Timeout | null>(null);
   const canvasRef = useRef<AnnotationCanvasRef>(null);
   const selected = images.find((image) => image.id === selectedId) ?? images[0];
 
@@ -58,16 +60,26 @@ export default function AnnotatePage() {
 
       // 2. Fetch all annotations for these images
       const annotationsByImage = await Promise.all(
-        imageUploads.map(img => getAnnotationsForImage(img.id).catch(() => []))
+        imageUploads.map((img) =>
+          getAnnotationsForImage(img.id).catch(() => []),
+        ),
       );
 
       // 3. Combine them: use image data from imageUploads and shape data from annotations
-      const combinedImages = imageUploads.map(imageUpload => {
-        const annotations = annotationsByImage.find(annList => annList[0]?.image === imageUpload.id) || [];
-        const allShapes = annotations.flatMap(ann => {
+      const combinedImages = imageUploads.map((imageUpload) => {
+        const annotations =
+          annotationsByImage.find(
+            // Cast `image` to `unknown` then `number` to satisfy TypeScript
+            (annList) => (annList[0]?.image as unknown as number) === imageUpload.id,
+          ) || [];
+        const allShapes = annotations.flatMap((ann) => {
           try {
-            return typeof ann.shape_data === 'string' ? JSON.parse(ann.shape_data) : (ann.shapes || []);
-          } catch { return []; }
+            return typeof ann.shape_data === "string"
+              ? (JSON.parse(ann.shape_data) as Shape[])
+              : ann.shapes || [];
+          } catch {
+            return [];
+          }
         });
         return { ...imageUpload, shapes: allShapes };
       });
@@ -92,19 +104,24 @@ export default function AnnotatePage() {
   async function upload(file: File) {
     const { id: imageId } = await uploadImage(file);
     const added = await createAnnotation(imageId, []);
-    setImages((current) => [...current, { ...added, shapes: added.shapes ?? [] }]);
+    setImages((current) => [
+      ...current,
+      { ...added, shapes: added.shapes ?? [] },
+    ]);
     setSelectedId(added.id);
   }
 
   async function patch(shapes: Shape[]) {
     if (!selected) return;
     setSaving("saving");
-    clearTimeout(saveTimeout.current);
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
     try {
       const updated = await updateAnnotation(selected.id, { shapes: shapes });
-      setImages(current =>
-        current.map(image =>
-          image.id === updated.id ? { ...updated, shapes: updated.shapes ?? [] } : image,
+      setImages((current) =>
+        current.map((image) =>
+          image.id === updated.id
+            ? { ...updated, shapes: updated.shapes ?? [] }
+            : image,
         ),
       );
       setSaving("saved");
@@ -143,7 +160,11 @@ export default function AnnotatePage() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {/* Navigation Controls */}
             <div className="flex items-center gap-2">
-              <button className="button-secondary" onClick={selectPrevious} disabled={!canGoPrev}>
+              <button
+                className="button-secondary"
+                onClick={selectPrevious}
+                disabled={!canGoPrev}
+              >
                 Previous
               </button>
               {selected && (
@@ -151,7 +172,11 @@ export default function AnnotatePage() {
                   {selectedIndex + 1} / {images.length}
                 </span>
               )}
-              <button className="button-secondary" onClick={selectNext} disabled={!canGoNext}>
+              <button
+                className="button-secondary"
+                onClick={selectNext}
+                disabled={!canGoNext}
+              >
                 Next
               </button>
             </div>
@@ -172,13 +197,25 @@ export default function AnnotatePage() {
               >
                 {annotationsVisible ? "Hide" : "Show"}
               </button>
-              <button className="button-secondary" onClick={() => canvasRef.current?.zoomIn()} aria-label="Zoom In" >
+              <button
+                className="button-secondary"
+                onClick={() => canvasRef.current?.zoomIn()}
+                aria-label="Zoom In"
+              >
                 <IconZoomIn />
               </button>
-              <button className="button-secondary" onClick={() => canvasRef.current?.zoomOut()} aria-label="Zoom Out" >
+              <button
+                className="button-secondary"
+                onClick={() => canvasRef.current?.zoomOut()}
+                aria-label="Zoom Out"
+              >
                 <IconZoomOut />
               </button>
-              <button className="button-secondary" onClick={() => canvasRef.current?.resetZoom()} aria-label="Reset Zoom" >
+              <button
+                className="button-secondary"
+                onClick={() => canvasRef.current?.resetZoom()}
+                aria-label="Reset Zoom"
+              >
                 <IconZoomReset />
               </button>
             </div>
@@ -191,11 +228,11 @@ export default function AnnotatePage() {
             />
           </div>
         </div>
-        {selected ? (
+        {selected && selected.shapes ? (
           <div className="mx-auto max-w-5xl">
             <AnnotationCanvas
               ref={canvasRef}
-              image={selected}
+              image={selected as Annotation & { shapes: Shape[] }}
               editMode={editMode}
               visible={annotationsVisible}
               onSave={(shapes) => patch(shapes)}

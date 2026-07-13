@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import type { AnnotatedImage, Shape } from "@/types";
+import type { Annotation, Shape } from "@/types";
 
 export interface AnnotationCanvasRef {
   zoomIn: () => void;
@@ -9,17 +9,15 @@ export interface AnnotationCanvasRef {
   resetZoom: () => void;
 }
 
-const AnnotationCanvas = forwardRef<AnnotationCanvasRef, {
-  image: AnnotatedImage & { shapes: Shape[] };
-  onSave: (shapes: Shape[]) => Promise<void>;
-  editMode: boolean;
-  visible: boolean;
-}>(function AnnotationCanvas({
-  image,
-  onSave,
-  editMode,
-  visible,
-}, ref) {
+const AnnotationCanvas = forwardRef<
+  AnnotationCanvasRef,
+  {
+    image: Annotation & { shapes: Shape[] };
+    onSave: (shapes: Shape[]) => Promise<void>;
+    editMode: boolean;
+    visible: boolean;
+  }
+>(function AnnotationCanvas({ image, onSave, editMode, visible }, ref) {
   const [draft, setDraft] = useState<[number, number][]>([]);
   const [selected, setSelected] = useState<number>();
   const [size, setSize] = useState({ width: 1, height: 1 });
@@ -39,8 +37,10 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasRef, {
     if (!editMode) return;
     const box = event.currentTarget.getBoundingClientRect();
     const point: [number, number] = [
-      (event.clientX - box.left) / box.width * size.width / zoom - pan.x / zoom,
-      (event.clientY - box.top) / box.height * size.height / zoom - pan.y / zoom
+      (((event.clientX - box.left) / box.width) * size.width) / zoom -
+      pan.x / zoom,
+      (((event.clientY - box.top) / box.height) * size.height) / zoom -
+      pan.y / zoom,
     ];
 
     // Check if user clicked near the first point to close the polygon
@@ -69,8 +69,8 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasRef, {
     value.map(([x, y]) => `${x},${y}`).join(" ");
 
   useImperativeHandle(ref, () => ({
-    zoomIn: () => setZoom(z => Math.min(z * 1.2, 5)),
-    zoomOut: () => setZoom(z => Math.max(z / 1.2, 0.2)),
+    zoomIn: () => setZoom((z) => Math.min(z * 1.2, 5)),
+    zoomOut: () => setZoom((z) => Math.max(z / 1.2, 0.2)),
     resetZoom: () => {
       setZoom(1);
       setPan({ x: 0, y: 0 });

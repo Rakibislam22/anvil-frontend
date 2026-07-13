@@ -166,7 +166,11 @@ export function uploadImage(image: File) {
   });
 }
 export function createAnnotation(imageId: number, shapes: Shape[]) {
-  return send<Annotation>({ method: "POST", url: "/annotations/", data: { image: imageId, shape_data: JSON.stringify(shapes) } });
+  return send<Annotation>({
+    method: "POST",
+    url: "/annotations/",
+    data: { image: imageId, shape_data: JSON.stringify(shapes) },
+  });
 }
 export async function getAnnotation(id: number): Promise<Annotation | null> {
   try {
@@ -185,7 +189,9 @@ export async function getAnnotation(id: number): Promise<Annotation | null> {
   }
 }
 
-export async function getAnnotationsForImage(imageId: number): Promise<Annotation[]> {
+export async function getAnnotationsForImage(
+  imageId: number,
+): Promise<Annotation[]> {
   const data = await send<Annotation[] | { results: Annotation[] }>({
     url: `/annotations/?image=${imageId}`,
   });

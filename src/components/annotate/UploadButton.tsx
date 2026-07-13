@@ -33,8 +33,9 @@ export default function UploadButton({
   return (
     <div>
       <label
-        className={`button-secondary inline-flex cursor-pointer items-center gap-2 ${busy && "cursor-not-allowed"
-          }`}
+        className={`button-secondary inline-flex cursor-pointer items-center gap-2 ${
+          busy && "cursor-not-allowed"
+        }`}
         aria-disabled={busy}
       >
         <IconUpload />

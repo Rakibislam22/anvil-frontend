@@ -1,14 +1,14 @@
 "use client";
-import type { AnnotatedImage } from "@/types";
+import type { Annotation } from "@/types";
 
 export default function ImageFilmstrip({
   images,
   selected,
   onSelect,
 }: {
-  images: AnnotatedImage[];
-  selected: string | undefined;
-  onSelect: (image: AnnotatedImage) => void;
+  images: Annotation[];
+  selected: number | undefined; 
+  onSelect: (image: Annotation) => void;
 }) {
   if (!images.length)
     return (
