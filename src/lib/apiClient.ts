@@ -32,7 +32,8 @@ function toApiError(error: unknown): ApiError {
     return new ApiError(
       typeof detail === "string" ? detail : error.message,
       error.response?.status ?? 0,
-      data,
+      false, // isSessionExpired
+      data, // error data payload
     );
   }
   return new ApiError("Request failed.", 0);
@@ -146,29 +147,60 @@ export function deleteTask(id: number) {
   return send<void>({ method: "DELETE", url: `/tasks/${id}/` });
 }
 export async function listAnnotations() {
+  // The API at /image-uploads/ returns objects with an `image` property that is a URL.
+  // We need to ensure the objects we return match the `Annotation` type used in the frontend.
+  // Let's assume the API returns { id: number, image: string, ... }
   const data = await send<Annotation[] | { results: Annotation[] }>({
-    url: "/annotations/",
+    url: "/image-uploads/",
+  });
+  const results = Array.isArray(data) ? data : (data.results ?? []);
+  return results;
+}
+export function uploadImage(image: File) {
+  const form = new FormData();
+  form.append("image", image);
+  return send<{ id: number }>({
+    method: "POST",
+    url: "/image-uploads/",
+    data: form,
+  });
+}
+export function createAnnotation(imageId: number, shapes: Shape[]) {
+  return send<Annotation>({ method: "POST", url: "/annotations/", data: { image: imageId, shape_data: JSON.stringify(shapes) } });
+}
+export async function getAnnotation(id: number): Promise<Annotation | null> {
+  try {
+    const annotation = await send<Annotation>({ url: `/annotations/${id}/` });
+    // The backend sends shape_data as a JSON string. We need to parse it.
+    if (annotation && typeof annotation.shape_data === "string") {
+      annotation.shapes = JSON.parse(annotation.shape_data);
+    }
+    return annotation;
+  } catch (e) {
+    // If an annotation doesn't exist for an image, the API might 404. We can treat this as no annotation.
+    if (e instanceof ApiError && e.status === 404) {
+      return null;
+    }
+    throw e; // Re-throw other errors
+  }
+}
+
+export async function getAnnotationsForImage(imageId: number): Promise<Annotation[]> {
+  const data = await send<Annotation[] | { results: Annotation[] }>({
+    url: `/annotations/?image=${imageId}`,
   });
   return Array.isArray(data) ? data : (data.results ?? []);
 }
-export function createAnnotation(image: File, shapes: Shape[]) {
-  const form = new FormData();
-  form.append("image", image);
-  form.append("shapes", JSON.stringify(shapes));
-  return send<Annotation>({ method: "POST", url: "/annotations/imageupload/", data: form });
-}
-export function getAnnotation(id: number) {
-  return send<Annotation>({ url: `/annotations/${id}/` });
-}
-export function updateAnnotation(
+export async function updateAnnotation(
   id: number,
   fields: Partial<Pick<Annotation, "shapes">>,
 ) {
-  return send<Annotation>({
-    method: "PATCH",
-    url: `/annotations/${id}/`,
-    data: fields,
-  });
+  const annotation = await createAnnotation(id, fields.shapes ?? []);
+  // The backend sends shape_data as a JSON string on update as well. We need to parse it.
+  if (annotation && typeof annotation.shape_data === "string") {
+    annotation.shapes = JSON.parse(annotation.shape_data);
+  }
+  return annotation;
 }
 export function deleteAnnotation(id: number) {
   return send<void>({ method: "DELETE", url: `/annotations/${id}/` });

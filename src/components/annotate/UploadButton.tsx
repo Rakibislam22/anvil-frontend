@@ -1,5 +1,7 @@
 "use client";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useRef, useState } from "react";
+import { IconUpload } from "../icons";
+
 export default function UploadButton({
   onUpload,
 }: {
@@ -7,11 +9,15 @@ export default function UploadButton({
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   async function change(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setBusy(true);
     setError("");
+
     try {
       await onUpload(file);
     } catch (reason) {
@@ -23,19 +29,24 @@ export default function UploadButton({
       e.target.value = "";
     }
   }
+
   return (
     <div>
-      <label className="button-primary inline-block cursor-pointer">
-        {busy ? "Uploading…" : "Upload image"}
+      <label
+        className={`button-secondary inline-flex cursor-pointer items-center gap-2 ${busy && "cursor-not-allowed"
+          }`}
+        aria-disabled={busy}
+      >
+        <IconUpload />
         <input
-          className="sr-only"
+          className="hidden"
           type="file"
           accept="image/*"
           onChange={change}
           disabled={busy}
         />
       </label>
-      {error && <p className="mt-2 text-sm text-ember">{error}</p>}
+      {error && <p className="error mt-2">{error}</p>}
     </div>
   );
 }

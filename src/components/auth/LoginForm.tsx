@@ -11,8 +11,8 @@ export default function LoginForm() {
   const router = useRouter();
   const { dispatch } = useAnvilContext();
   const { state } = useAnvilContext();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("demo@gmail.com");
+  const [password, setPassword] = useState("Demo1234");
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

@@ -1,6 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 import type { AnnotatedImage } from "@/types";
+
 export default function ImageFilmstrip({
   images,
   selected,
@@ -16,16 +16,21 @@ export default function ImageFilmstrip({
         No images yet. Upload an image to start marking it up.
       </p>
     );
+
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    // Added min-w-0 to prevent flex item overflow
+    <div className="flex gap-3 overflow-x-auto pb-2 min-w-0">
       {images.map((image) => (
         <button
           key={image.id}
           onClick={() => onSelect(image)}
-          className={`shrink-0 rounded-lg border-2 p-1 ${selected === image.id ? "border-ember" : "border-transparent"}`}
+          // shrink-0 prevents the button from getting squished
+          className={`shrink-0 rounded-lg border-2 p-1 ${
+            selected === image.id ? "border-ember" : "border-transparent"
+          }`}
         >
           <img
-            className="h-20 w-28 rounded object-cover"
+            className="h-20 w-28 rounded object-cover block"
             src={image.image}
             alt="Uploaded annotation"
           />
