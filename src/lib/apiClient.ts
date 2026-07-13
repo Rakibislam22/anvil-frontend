@@ -9,6 +9,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public isSessionExpired = false,
     public data: ErrorData = null,
   ) {
     super(message);
@@ -64,7 +65,9 @@ api.interceptors.response.use(
         localStorage.removeItem("anvil-refresh");
         localStorage.removeItem("anvil-user");
         window.location.assign("/login");
-        return Promise.reject(toApiError(refreshError));
+        const apiError = toApiError(refreshError);
+        apiError.isSessionExpired = true;
+        return Promise.reject(apiError);
       }
     }
 
@@ -152,7 +155,7 @@ export function createAnnotation(image: File, shapes: Shape[]) {
   const form = new FormData();
   form.append("image", image);
   form.append("shapes", JSON.stringify(shapes));
-  return send<Annotation>({ method: "POST", url: "/annotations/", data: form });
+  return send<Annotation>({ method: "POST", url: "/annotations/imageupload/", data: form });
 }
 export function getAnnotation(id: number) {
   return send<Annotation>({ url: `/annotations/${id}/` });
