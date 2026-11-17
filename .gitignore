@@ -5,3 +5,7 @@ out
 build
 
 .vercel
+
+# pnpm
+.pnpm-store
+.pnpm-debug.log
