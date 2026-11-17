@@ -12,7 +12,7 @@ export interface AnnotationCanvasRef {
 const AnnotationCanvas = forwardRef<
   AnnotationCanvasRef,
   {
-    image: Annotation & { shapes: Shape[] };
+    image: Annotation & { shapes: Shape[]; image_url: string };
     onSave: (shapes: Shape[]) => Promise<void>;
     editMode: boolean;
     visible: boolean;
@@ -86,7 +86,7 @@ const AnnotationCanvas = forwardRef<
             transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
             transformOrigin: "top left",
           }}
-          src={image.image}
+          src={image.image_url}
           alt="Annotation target"
           onLoad={(event) =>
             setSize({

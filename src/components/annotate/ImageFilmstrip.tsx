@@ -7,7 +7,7 @@ export default function ImageFilmstrip({
   onSelect,
 }: {
   images: Annotation[];
-  selected: number | undefined; 
+  selected: number | undefined;
   onSelect: (image: Annotation) => void;
 }) {
   if (!images.length)
@@ -31,7 +31,7 @@ export default function ImageFilmstrip({
         >
           <img
             className="h-20 w-28 rounded object-cover block"
-            src={image.image}
+            src={image.image_url}
             alt="Uploaded annotation"
           />
         </button>

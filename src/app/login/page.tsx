@@ -13,9 +13,20 @@ export default async function LoginPage({
       <section
         className={`${styles.panel} flex min-h-[38vh] flex-col justify-between p-8 text-parchment sm:p-12`}
       >
-        <div className="flex items-center gap-3 text-ember">
-          <ForgeMark />
-          <span className="font-display text-2xl text-parchment">Anvil</span>
+        <div className="flex items-center justify-between">
+          <Link href="/landing" className="flex items-center gap-3 text-ember hover:opacity-80 transition-opacity">
+            <ForgeMark />
+            <span className="font-display text-2xl text-parchment">Anvil</span>
+          </Link>
+          <Link
+            href="/landing"
+            className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-parchment/60 hover:text-parchment transition-colors duration-200"
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 3L5 8l5 5" />
+            </svg>
+            Back to home
+          </Link>
         </div>
         <div>
           <p className="font-mono text-xs uppercase tracking-[.2em] text-ember">
