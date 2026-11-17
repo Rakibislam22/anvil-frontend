@@ -1,103 +1,88 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/apiClient";
 import { useAnvilContext } from "@/context/useAnvilContext";
-
-const emailPattern = /^\S+@\S+\.\S+$/;
+import { login } from "@/lib/apiClient";
+import Spinner from "@/components/Spinner";
+import { IconEye, IconEyeOff } from "@/components/icons";
 
 export default function LoginForm() {
-  const router = useRouter();
   const { dispatch } = useAnvilContext();
-  const { state } = useAnvilContext();
+  const router = useRouter();
   const [email, setEmail] = useState("demo@gmail.com");
   const [password, setPassword] = useState("Demo1234");
-  const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSlowMessage, setShowSlowMessage] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    if (!state.isHydrating && state.auth.accessToken) {
-      router.replace("/tasks");
-    }
-  }, [state.isHydrating, state.auth.accessToken, router]);
-
-  if (state.isHydrating || state.auth.accessToken) {
-    return (
-      <div className="page-shell">
-        <p className="eyebrow">Loading...</p>
-      </div>
-    );
-  }
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!emailPattern.test(email)) {
-      setError("Enter a valid email address.");
-      return;
-    }
-    if (!password) {
-      setError("Password is required.");
-      return;
-    }
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading) return;
+    setError("");
 
     setLoading(true);
-    setError("");
+    const timer = setTimeout(() => setShowSlowMessage(true), 4000);
+
     try {
-      const authResponse = await login({ email, password });
-      dispatch({ type: "SET_AUTH", auth: authResponse });
-      router.replace("/tasks");
+      const user = await login({ email, password });
+      dispatch({ type: "SET_AUTH", auth: user });
+      router.push("/tasks");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Sign in failed.");
+      setError(
+        reason instanceof Error ? reason.message : "Login failed.",
+      );
     } finally {
+      clearTimeout(timer);
       setLoading(false);
+      setShowSlowMessage(false);
     }
   }
 
   return (
-    <form onSubmit={submit} className="w-full max-w-md space-y-5">
-      <div>
-        <label htmlFor="email">Email</label>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+        className="input"
+        required
+      />
+      <div className="relative">
         <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          autoComplete="email"
-          aria-invalid={Boolean(error)}
+          type={showPassword ? "text" : "password"}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Password"
+          className="input w-full"
+          required
         />
-      </div>
-      <div>
-        <label htmlFor="password">Password</label>
-        <div className="relative">
-          <input
-            id="password"
-            type={show ? "text" : "password"}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-          />
-          <button
-            type="button"
-            className="absolute right-3 top-3 text-sm text-steel"
-            onClick={() => setShow(!show)}
-          >
-            {show ? "Hide" : "Show"}
-          </button>
-        </div>
-      </div>
-      {error && (
-        <p
-          role="alert"
-          className="rounded-lg border border-ember p-3 text-sm text-ember"
+        <button
+          type="button"
+          className="absolute inset-y-0 right-0 flex items-center pr-3"
+          onClick={() => setShowPassword(!showPassword)}
         >
-          {error}
+          {showPassword ? <IconEyeOff /> : <IconEye />}
+        </button>
+      </div>
+      <button type="submit" className="button-primary" disabled={loading}>
+        {loading ? (
+          <div className="flex items-center justify-center gap-2">
+            <Spinner />
+            <span>Logging in...</span>
+          </div>
+        ) : (
+          "Login"
+        )}
+      </button>
+      {error && <p className="error">{error}</p>}
+      {showSlowMessage && (
+        <p className="text-sm text-ink/60">
+          Server is waking up, this can take up to a minute on the first try...
         </p>
       )}
-      <button className="button-primary w-full" disabled={loading}>
-        {loading ? "Signing in…" : "Sign in"}
-      </button>
     </form>
   );
 }
