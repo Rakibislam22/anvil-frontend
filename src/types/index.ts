@@ -29,6 +29,7 @@ export type Shape = { type: "polygon"; points: [number, number][] };
 export type Annotation = {
   id: number;
   image: string;
+  image_url: string;   
   shapes?: Shape[];
   shape_data?: string;
   owner: number;

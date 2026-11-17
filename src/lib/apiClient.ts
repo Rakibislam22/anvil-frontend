@@ -159,7 +159,8 @@ export async function listAnnotations() {
 export function uploadImage(image: File) {
   const form = new FormData();
   form.append("image", image);
-  return send<{ id: number }>({
+  // Also expect image_url in the response, since the backend returns it
+  return send<{ id: number; image_url: string }>({
     method: "POST",
     url: "/image-uploads/",
     data: form,
