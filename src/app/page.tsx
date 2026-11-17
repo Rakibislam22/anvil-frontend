@@ -8,7 +8,7 @@ export default function Home() {
 
   useEffect(() => {
     const hasToken = localStorage.getItem("anvil-access");
-    router.replace(hasToken ? "/tasks" : "/login");
+    router.replace(hasToken ? "/tasks" : "/landing");
   }, [router]);
 
   return (

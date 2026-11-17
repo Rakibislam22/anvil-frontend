@@ -9,7 +9,7 @@ export default function AppHeader() {
   const path = usePathname();
   const router = useRouter();
   const { state, dispatch } = useAnvilContext();
-  if (path === "/login" || path === "/register") return null;
+  if (path === "/login" || path === "/register" || path.startsWith("/landing")) return null;
   function handleSignOut() {
     dispatch({ type: "CLEAR_AUTH" });
     localStorage.removeItem("anvil-access");

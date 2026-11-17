@@ -70,7 +70,8 @@ export default function AnnotatePage() {
         const annotations =
           annotationsByImage.find(
             // Cast `image` to `unknown` then `number` to satisfy TypeScript
-            (annList) => (annList[0]?.image as unknown as number) === imageUpload.id,
+            (annList) =>
+              (annList[0]?.image as unknown as number) === imageUpload.id,
           ) || [];
         const allShapes = annotations.flatMap((ann) => {
           try {
@@ -102,11 +103,12 @@ export default function AnnotatePage() {
   }, [load]);
 
   async function upload(file: File) {
-    const { id: imageId } = await uploadImage(file);
+    const { id: imageId, image_url } = await uploadImage(file);
     const added = await createAnnotation(imageId, []);
     setImages((current) => [
       ...current,
-      { ...added, shapes: added.shapes ?? [] },
+      // Merge image_url manually since the /annotations/ response doesn't include it
+      { ...added, image_url, shapes: added.shapes ?? [] },
     ]);
     setSelectedId(added.id);
   }
